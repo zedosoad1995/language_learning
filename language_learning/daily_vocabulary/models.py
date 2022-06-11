@@ -1,4 +1,12 @@
-from django.db.models import Model, BooleanField, CharField, DateTimeField, IntegerField, ForeignKey, CASCADE
+from django.db.models import (
+    Model, 
+    BooleanField, 
+    CharField, 
+    DateTimeField, 
+    IntegerField, 
+    PositiveIntegerField, 
+    ForeignKey, 
+    CASCADE)
 from django.core.validators import MaxValueValidator, MinValueValidator
 
 
@@ -25,4 +33,6 @@ class Word(Model):
             MaxValueValidator(5)
         ]
     )
+    score = PositiveIntegerField(default=0)
     is_learned = BooleanField(default=False)
+    is_seen = BooleanField(default=False)
