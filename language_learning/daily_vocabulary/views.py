@@ -15,5 +15,6 @@ class WordViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows words to be viewed or edited.
     """
-    queryset = Word.objects.all()
+    num_daily_words = User.objects.first().num_daily_words
+    queryset = Word.objects.order_by('-score')[:num_daily_words]
     serializer_class = WordSerializer

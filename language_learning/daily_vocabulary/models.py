@@ -13,6 +13,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 
 class User(Model):
     last_update = DateTimeField()
+    num_daily_words = PositiveIntegerField(default=3)
 
 
 class Word(Model):
