@@ -11,22 +11,30 @@ def update_word_scores(request):
     """
     Updates the scores of the words, taking into consideration how much time it has passed since last seeing
     """
-    words = Word.objects.filter(is_learned=False)
-
-    current_user = User.objects.all()[0]
+    current_user = User.objects.first()
     last_update = current_user.last_update
-    last_update = last_update.replace(hour=0, minute=0, second=0, microsecond=0)
+    last_update = last_update.replace(second=0, microsecond=0)
 
     current_datetime = timezone.now()
     current_user.last_update = current_datetime
     current_user.save()
 
-    current_datetime = current_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+    current_datetime = current_datetime.replace(second=0, microsecond=0)
 
-    days_since = (current_datetime - last_update).days
+    days_since = (current_datetime - last_update).total_seconds() / 60.0
+    print(days_since)
 
+    words = Word.objects.filter(is_learned=False)
     for word in words:
-        word.score += days_since * (word.relevance + 6 - word.knowledge)
+        if days_since > 0:
+            if word.is_seen:
+                word.score = 0
+                word.is_seen = False
+            else:
+                word.score += days_since * (word.relevance + 6 - word.knowledge)
+
+            word.is_new = False
+
         word.save()
 
     return HttpResponse(status=200)
@@ -39,7 +47,7 @@ def words_list(request):
     """
     if request.method == 'GET':
         num_daily_words = User.objects.first().num_daily_words
-        words = Word.objects.filter(is_learned=False).order_by('-score')[:num_daily_words]
+        words = Word.objects.filter(is_learned=False, is_new=False).order_by('-score')[:num_daily_words]
         serializer = WordSerializer(words, many=True)
         return JsonResponse(serializer.data, safe=False)
 

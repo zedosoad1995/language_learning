@@ -8,6 +8,7 @@ from django.db.models import (
     ForeignKey, 
     CASCADE)
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.utils import timezone
 
 
 
@@ -37,3 +38,4 @@ class Word(Model):
     score = PositiveIntegerField(default=0)
     is_learned = BooleanField(default=False)
     is_seen = BooleanField(default=False)
+    is_new = BooleanField(default=False)
