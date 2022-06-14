@@ -1,20 +1,98 @@
 from .models import User, Word
-from rest_framework import permissions, viewsets
 from .serializers import UserSerializer, WordSerializer
+from django.http import HttpResponse, JsonResponse
+from rest_framework.parsers import JSONParser
+from rest_framework.decorators import api_view
+from django.utils import timezone
 
 
-class UserViewSet(viewsets.ModelViewSet):
+@api_view(['POST'])
+def update_word_scores(request):
     """
-    API endpoint that allows users to be viewed or edited.
+    Updates the scores of the words, taking into consideration how much time it has passed since last seeing
     """
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+    words = Word.objects.filter(is_learned=False)
+
+    current_user = User.objects.all()[0]
+    last_update = current_user.last_update
+    last_update = last_update.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    current_datetime = timezone.now()
+    current_user.last_update = current_datetime
+    current_user.save()
+
+    current_datetime = current_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    days_since = (current_datetime - last_update).days
+
+    for word in words:
+        word.score += days_since * (word.relevance + 6 - word.knowledge)
+        word.save()
+
+    return HttpResponse(status=200)
 
 
-class WordViewSet(viewsets.ModelViewSet):
+@api_view(['GET', 'POST'])
+def words_list(request):
     """
-    API endpoint that allows words to be viewed or edited.
+    List words, or create a new word.
     """
-    num_daily_words = User.objects.first().num_daily_words
-    queryset = Word.objects.order_by('-score')[:num_daily_words]
-    serializer_class = WordSerializer
+    if request.method == 'GET':
+        num_daily_words = User.objects.first().num_daily_words
+        words = Word.objects.filter(is_learned=False).order_by('-score')[:num_daily_words]
+        serializer = WordSerializer(words, many=True)
+        return JsonResponse(serializer.data, safe=False)
+
+    elif request.method == 'POST':
+        data = JSONParser().parse(request)
+        serializer = WordSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse(serializer.data, status=201)
+        return JsonResponse(serializer.errors, status=400)
+
+
+@api_view(['GET', 'PATCH', 'DELETE'])
+def word_detail(request, pk):
+    """
+    Retrieve, update or delete a word.
+    """
+    try:
+        word = Word.objects.get(pk=pk)
+    except Word.DoesNotExist:
+        return HttpResponse(status=404)
+
+    if request.method == 'GET':
+        serializer = WordSerializer(word)
+        return JsonResponse(serializer.data)
+
+    elif request.method == 'PATCH':
+        data = JSONParser().parse(request)
+        serializer = WordSerializer(word, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse(serializer.data)
+        return JsonResponse(serializer.errors, status=400)
+
+    elif request.method == 'DELETE':
+        word.delete()
+        return HttpResponse(status=204)
+
+
+@api_view(['GET', 'POST'])
+def user_list(request):
+    """
+    List all users, or create a new user.
+    """
+    if request.method == 'GET':
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
+        return JsonResponse(serializer.data, safe=False)
+
+    elif request.method == 'POST':
+        data = JSONParser().parse(request)
+        serializer = UserSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse(serializer.data, status=201)
+        return JsonResponse(serializer.errors, status=400)
