@@ -1,9 +1,15 @@
+from sqlite3 import Date
+from .utils.utils import get_days_since, tz_diff
 from .models import User, Word
 from .serializers import UserSerializer, WordSerializer
 from django.http import HttpResponse, JsonResponse
 from rest_framework.parsers import JSONParser
 from rest_framework.decorators import api_view
+from django.db.models.functions import Cast
+from django.db.models import F, ExpressionWrapper, DateTimeField, IntegerField
 from django.utils import timezone
+from datetime import datetime
+from pytz import timezone as py_timezone
 
 
 @api_view(['POST'])
@@ -13,19 +19,29 @@ def update_word_scores(request):
     """
     current_user = User.objects.first()
     last_update = current_user.last_update
-    last_update = last_update.replace(second=0, microsecond=0)
 
-    current_datetime = timezone.now()
-    current_user.last_update = current_datetime
+    data = JSONParser().parse(request)
+    # TODO: Check timezone is valid
+    tz_name = data.get('timezone', current_user.timezone)
+    tz = py_timezone(tz_name)
+    now = timezone.now()
+    now_to_tz = now.astimezone(tz=tz)
+
+    current_user.timezone = tz_name
+    current_user.last_update = now
     current_user.save()
 
-    current_datetime = current_datetime.replace(second=0, microsecond=0)
+    last_tz_name = current_user.timezone
+    last_tz = py_timezone(last_tz_name)
+    last_update = last_update.astimezone(tz=last_tz)
 
-    days_since = (current_datetime - last_update).total_seconds() / 60.0
-    print(days_since)
+    days_since_max = get_days_since(now_to_tz, last_update)
 
     words = Word.objects.filter(is_learned=False)
     for word in words:
+        days_since_curr_word = get_days_since(now_to_tz, word.created_at_local.replace(tzinfo=now_to_tz.tzinfo))
+        days_since = min(days_since_max, days_since_curr_word)
+
         if days_since > 0:
             if word.is_seen:
                 word.score = 0
@@ -46,13 +62,26 @@ def words_list(request):
     List words, or create a new word.
     """
     if request.method == 'GET':
+        current_user = User.objects.first()
+        tz = py_timezone(current_user.timezone)
+        current_date = datetime.now(tz)
+        current_day_filter = {
+            'created_at_local__date__gte': current_date.date(),
+            'created_at_local__time__gte': current_date.time().replace(second=0, microsecond=0) # TODO: remove
+        }
+
         num_daily_words = User.objects.first().num_daily_words
-        words = Word.objects.filter(is_learned=False, is_new=False).order_by('-score')[:num_daily_words]
+        words = Word.objects.filter(is_learned=False)\
+                .exclude(**current_day_filter)\
+                .order_by('-score')[:num_daily_words]
+
         serializer = WordSerializer(words, many=True)
         return JsonResponse(serializer.data, safe=False)
 
     elif request.method == 'POST':
         data = JSONParser().parse(request)
+        data['created_at'] = timezone.now()
+
         serializer = WordSerializer(data=data)
         if serializer.is_valid():
             serializer.save()

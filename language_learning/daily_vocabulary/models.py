@@ -2,19 +2,20 @@ from django.db.models import (
     Model, 
     BooleanField, 
     CharField, 
-    DateTimeField, 
+    DateTimeField,
+    FloatField,
     IntegerField, 
     PositiveIntegerField, 
     ForeignKey, 
     CASCADE)
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.utils import timezone
-
+from datetime import datetime
 
 
 class User(Model):
     last_update = DateTimeField()
     num_daily_words = PositiveIntegerField(default=3)
+    timezone = CharField(max_length=30, default='UTC')
 
 
 class Word(Model):
@@ -38,4 +39,5 @@ class Word(Model):
     score = PositiveIntegerField(default=0)
     is_learned = BooleanField(default=False)
     is_seen = BooleanField(default=False)
-    is_new = BooleanField(default=False)
+    created_at = DateTimeField(default=datetime.fromtimestamp(0))
+    created_at_local = DateTimeField(default=datetime.fromtimestamp(0))
