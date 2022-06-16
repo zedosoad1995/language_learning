@@ -5,8 +5,6 @@ from .serializers import UserSerializer, WordSerializer
 from django.http import HttpResponse, JsonResponse
 from rest_framework.parsers import JSONParser
 from rest_framework.decorators import api_view
-from django.db.models.functions import Cast
-from django.db.models import F, ExpressionWrapper, DateTimeField, IntegerField
 from django.utils import timezone
 from datetime import datetime
 from pytz import timezone as py_timezone
@@ -27,15 +25,17 @@ def update_word_scores(request):
     now = timezone.now()
     now_to_tz = now.astimezone(tz=tz)
 
-    current_user.timezone = tz_name
-    current_user.last_update = now
-    current_user.save()
-
     last_tz_name = current_user.timezone
     last_tz = py_timezone(last_tz_name)
     last_update = last_update.astimezone(tz=last_tz)
 
     days_since_max = get_days_since(now_to_tz, last_update)
+    if days_since_max <= 0:
+        HttpResponse(status=200)
+
+    current_user.timezone = tz_name
+    current_user.last_update = now
+    current_user.save()
 
     words = Word.objects.filter(is_learned=False)
     for word in words:
