@@ -1,3 +1,4 @@
 settings*
 *_pycache_*
 venv
+.vscode
