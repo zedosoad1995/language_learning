@@ -26,7 +26,7 @@ class User(AbstractUser):
     timezone = CharField(max_length=30, default='UTC')
     is_superuser = BooleanField(default=False)
     is_staff = BooleanField(default=False)
-    is_active = BooleanField(default=False)
+    is_active = BooleanField(default=True)
 
     objects = UserManager()
 
