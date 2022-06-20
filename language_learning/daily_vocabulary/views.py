@@ -100,10 +100,14 @@ def daily_words_list(request):
             'created_at_local__time__gte': current_date.time().replace(second=0, microsecond=0) # TODO: remove
         }
 
+        print(current_day_filter)
+
         num_daily_words = logged_user.num_daily_words
         words = Word.objects.filter(user__id=request.auth.get('user_id'), is_learned=False)\
                 .exclude(**current_day_filter)\
                 .order_by('-score')[:num_daily_words]
+
+        print(Word.objects.filter(user__id=request.auth.get('user_id'), is_learned=False))
 
         serializer = WordSerializer(words, many=True)
         return JsonResponse(serializer.data, safe=False)
@@ -125,12 +129,14 @@ def words_list(request):
 
     elif request.method == 'POST':
         data = JSONParser().parse(request)
+        data['user_id'] = request.auth.get('user_id')
         data['created_at'] = timezone.now()
 
         serializer = WordSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()
-            return JsonResponse(serializer.data, status=201)
+            w = Word(**data)
+            w.save()
+            return JsonResponse(data, status=201)
         return JsonResponse(serializer.errors, status=400)
 
 

@@ -20,4 +20,4 @@ class UserSerializer(serializers.ModelSerializer):
 class WordSerializer(serializers.ModelSerializer):
     class Meta:
         model = Word
-        fields = ['id', 'user', 'original_word', 'translated_word', 'knowledge', 'relevance', 'score', 'is_learned', 'is_seen', 'created_at_local', 'created_at']
+        fields = ['id', 'original_word', 'translated_word', 'knowledge', 'relevance', 'score', 'is_learned', 'is_seen', 'created_at_local', 'created_at']
