@@ -2,3 +2,4 @@ settings*
 *_pycache_*
 venv
 *.vscode*
+*db.sqlite3*
