@@ -85,11 +85,11 @@ def update_word_scores(request):
     return HttpResponse(status=200)
 
 
-@api_view(['GET', 'POST'])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated, ])
-def words_list(request):
+def daily_words_list(request):
     """
-    List words, or create a new word.
+    List the top n words of the day, ordered by score (where n is the number of daily words)
     """
     if request.method == 'GET':
         logged_user = User.objects.filter(id=request.auth.get('user_id')).first()
@@ -104,6 +104,21 @@ def words_list(request):
         words = Word.objects.filter(user__id=request.auth.get('user_id'), is_learned=False)\
                 .exclude(**current_day_filter)\
                 .order_by('-score')[:num_daily_words]
+
+        serializer = WordSerializer(words, many=True)
+        return JsonResponse(serializer.data, safe=False)
+
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated, ])
+def words_list(request):
+    """
+    List words, or create a new word.
+    """
+    if request.method == 'GET':
+        words = Word.objects.filter(user__id=request.auth.get('user_id'))\
+                    .order_by('original_word')
 
         serializer = WordSerializer(words, many=True)
         return JsonResponse(serializer.data, safe=False)
