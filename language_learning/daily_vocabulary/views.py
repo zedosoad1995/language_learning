@@ -100,8 +100,6 @@ def daily_words_list(request):
             'created_at_local__time__gte': current_date.time().replace(second=0, microsecond=0) # TODO: remove
         }
 
-        print(current_day_filter)
-
         num_daily_words = logged_user.num_daily_words
         words = Word.objects.filter(user__id=request.auth.get('user_id'), is_learned=False)\
                 .exclude(**current_day_filter)\
@@ -147,7 +145,7 @@ def word_detail(request, pk):
     Retrieve, update or delete a word.
     """
     try:
-        word = Word.objects.get(pk=pk)
+        word = Word.objects.get(pk=pk, user__id=request.auth.get('user_id'))
     except Word.DoesNotExist:
         return HttpResponse(status=404)
 
