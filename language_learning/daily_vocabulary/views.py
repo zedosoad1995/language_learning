@@ -13,20 +13,45 @@ from datetime import datetime
 from pytz import timezone as py_timezone
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import permission_classes
+from django.db.models.functions import Lower
 
 
-@api_view(['GET', 'POST'])
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated, ])
+def current_user(request):
+    """
+    List and edit logged user.
+    """
+    try:
+        logged_user = User.objects.get(pk=request.auth.get('user_id'))
+    except Word.DoesNotExist:
+        return HttpResponse(status=404)
+
+    if request.method == 'GET':
+        serializer = UserSerializer(logged_user)
+        return JsonResponse(serializer.data, safe=False)
+    elif request.method == 'PATCH':
+        data = JSONParser().parse(request)
+        serializer = UserSerializer(logged_user, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse(serializer.data)
+        return JsonResponse(serializer.errors, status=400)
+    
+
+
+@api_view(['POST'])
 @permission_classes([AllowAny, ])
 def user_list(request):
     """
     List all users, or create a new user.
     """
-    if request.method == 'GET':
+    """ if request.method == 'GET':
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
-        return JsonResponse(serializer.data, safe=False)
+        return JsonResponse(serializer.data, safe=False) """
 
-    elif request.method == 'POST':
+    if request.method == 'POST':
         data = JSONParser().parse(request)
         data['last_update'] = timezone.now()
         data.setdefault('timezone', TIME_ZONE)
@@ -105,8 +130,6 @@ def daily_words_list(request):
                 .exclude(**current_day_filter)\
                 .order_by('-score')[:num_daily_words]
 
-        print(Word.objects.filter(user__id=request.auth.get('user_id'), is_learned=False))
-
         serializer = WordSerializer(words, many=True)
         return JsonResponse(serializer.data, safe=False)
 
@@ -120,7 +143,7 @@ def words_list(request):
     """
     if request.method == 'GET':
         words = Word.objects.filter(user__id=request.auth.get('user_id'))\
-                    .order_by('original_word')
+                    .order_by(Lower('original_word'))
 
         serializer = WordSerializer(words, many=True)
         return JsonResponse(serializer.data, safe=False)
