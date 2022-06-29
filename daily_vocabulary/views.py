@@ -32,6 +32,7 @@ def current_user(request):
         return JsonResponse(serializer.data, safe=False)
     elif request.method == 'PATCH':
         data = JSONParser().parse(request)
+        print(data)
         serializer = UserSerializer(logged_user, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
