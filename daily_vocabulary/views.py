@@ -1,6 +1,6 @@
 from language_learning.settings import TIME_ZONE
 
-from .utils.utils import get_days_since
+from .utils.utils import calculate_new_score, get_days_since
 from .models import User, Word
 from .serializers import UserSerializer, WordSerializer
 from django.http import HttpResponse, JsonResponse
@@ -95,7 +95,7 @@ def update_word_scores(request):
                 word.score = 0
                 word.is_seen = False
             else:
-                word.score += days_since * (word.relevance + 6 - word.knowledge)
+                word.score += calculate_new_score(days_since, word.relevance, word.knowledge)
 
         word.save()
 
