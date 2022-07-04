@@ -120,4 +120,12 @@ class TestCeateUser(TestCase):
 
         logged_user = User.objects.filter(username=self.username).first()
         self.assertEqual(logged_user.last_update, self.past_update + timedelta(days=days_after_prev_update))
+
+    def test_returns_400_when_invalid_timezone_in_payload(self):
+        invalid_timezone = 'invalid'
+
+        with patch('daily_vocabulary.views.timezone.now', return_value=self.past_update):
+            response = self.client.post(URL, {'timezone': invalid_timezone}, content_type='application/json', HTTP_AUTHORIZATION=f'JWT {self.access_token}')
+
+        self.assertEqual(response.status_code, 400)
         

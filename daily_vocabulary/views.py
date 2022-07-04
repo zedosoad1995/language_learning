@@ -9,6 +9,8 @@ from rest_framework.decorators import api_view
 from django.utils import timezone
 from datetime import datetime
 from pytz import timezone as py_timezone
+from pytz.exceptions import UnknownTimeZoneError
+
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import permission_classes
 from django.db.models.functions import Lower
@@ -54,7 +56,6 @@ def user_list(request):
         data['last_update'] = timezone.now()
         data.setdefault('timezone', TIME_ZONE)
 
-
         serializer = UserSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -68,20 +69,20 @@ def update_word_scores(request):
     """
     Updates the scores of the words, taking into consideration how much time it has passed since last seeing
     """
+    data = JSONParser().parse(request)
+
     logged_user = User.objects.filter(id=request.auth.get('user_id')).first()
 
-    data = JSONParser().parse(request)
-    # TODO: Check timezone is valid
-
-    last_tz = py_timezone(logged_user.timezone)
-    last_update = logged_user.last_update.astimezone(tz=last_tz)
+    prev_update = logged_user.last_update.astimezone(tz=py_timezone(logged_user.timezone))
 
     tz_name = data.get('timezone', logged_user.timezone)
-    tz_curr = py_timezone(tz_name)
     now = timezone.now()
-    now_to_tz = now.astimezone(tz=tz_curr)
+    try:
+        now_to_tz = now.astimezone(tz=py_timezone(tz_name))
+    except UnknownTimeZoneError:
+        return JsonResponse('Invalid timezone', status=400, safe=False)
 
-    days_since_max = get_days_since(now_to_tz, last_update)
+    days_since_max = get_days_since(now_to_tz, prev_update)
     if days_since_max <= 0:
         return HttpResponse(status=200)
 
@@ -112,22 +113,25 @@ def daily_words_list(request):
     """
     List the top n words of the day, ordered by score (where n is the number of daily words)
     """
-    if request.method == 'GET':
-        logged_user = User.objects.filter(id=request.auth.get('user_id')).first()
-        tz = py_timezone(logged_user.timezone)
-        current_date = datetime.now(tz)
-        current_day_filter = {
-            'created_at_local__date__gte': current_date.date(),
-            'created_at_local__time__gte': current_date.time().replace(second=0, microsecond=0) # TODO: remove
-        }
+    user_id = request.auth.get('user_id')
 
-        num_daily_words = logged_user.num_daily_words
-        words = Word.objects.filter(user__id=request.auth.get('user_id'), is_learned=False)\
-                .exclude(**current_day_filter)\
-                .order_by('-score')[:num_daily_words]
+    logged_user = User.objects.filter(id=user_id).first()
+    tz = py_timezone(logged_user.timezone)
+    current_date = datetime.now(tz)
 
-        serializer = WordSerializer(words, many=True)
-        return JsonResponse(serializer.data, safe=False)
+    # To exclude words added in that day (or after) to being returned
+    current_day_filter = {
+        'created_at_local__date__gte': current_date.date(),
+        #'created_at_local__time__gte': current_date.time().replace(second=0, microsecond=0) # TODO: remove
+    }
+
+    num_daily_words = logged_user.num_daily_words
+    words = Word.objects.filter(user__id=user_id, is_learned=False)\
+            .exclude(**current_day_filter)\
+            .order_by('-score')[:num_daily_words]
+
+    serializer = WordSerializer(words, many=True)
+    return JsonResponse(serializer.data, safe=False)
 
 
 
