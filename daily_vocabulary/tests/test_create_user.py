@@ -45,7 +45,6 @@ class TestCeateUser(TestCase):
         self.assertEqual(response.status_code, 400)
 
     @parameterized.expand([
-       ('password'),
        ('small'),
        ('huuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuge'),
        ('Password123'),
@@ -57,7 +56,7 @@ class TestCeateUser(TestCase):
 
         self.assertEqual(response.status_code, 400)
 
-    def test_returns_400_when_num_of_daily_words_is_invalid(self):
+    def test_returns_400_when_num_of_daily_words_is_not_in_the_possible_choices(self):
         payload = STANDARD_PAYLOAD.copy()
         payload['num_daily_words'] = 4
 

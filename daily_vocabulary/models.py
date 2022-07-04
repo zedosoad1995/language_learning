@@ -1,5 +1,4 @@
 from datetime import datetime
-from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import AbstractUser
 from django.db.models import (
@@ -12,26 +11,16 @@ from django.db.models import (
     PositiveIntegerField, 
     ForeignKey, 
     CASCADE)
-import re
+from pytz import timezone as py_timezone
 
-def validate_username(val):
-    if re.fullmatch(r'[a-zA-Z0-9_.]{3,}', val) is None:
-        raise ValidationError(
-            'Username must have between 1 and 30 characters,' + 
-            ' and are only allowed to contain alphanumerics and the symbols . and _'
-            )
-
-def validate_password(val):
-    if re.fullmatch(
-            r'(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[*.!@$%^&(){}\[\]:;<>,\.\?\/~_\+\-=|\\])' + 
-            r'(?:[a-zA-Z0-9*.!@$%^&(){}\[\]:;<>,\.\?\/~_\+\-=|\\]{8,30})'
-            , val
-        ) is None:
-        raise ValidationError(
-            'Password must have between 8 and 30 characters, ' + 
-            'contain at least 1 lower case letter, 1 upper case letter, ' + 
-            '1 digit and 1 special character'
-            )
+from .validators import (
+    validate_username, 
+    validate_at_least_one_lower_case,
+    validate_at_least_one_upper_case,
+    validate_at_least_one_digit,
+    validate_at_least_one_special_character,
+    validate_password_length
+)
 
 
 from .managers import UserManager
@@ -45,7 +34,13 @@ class User(AbstractUser):
         unique=True, 
         validators=[validate_username]
         )
-    password = CharField(max_length=20, validators=[validate_password])
+    password = CharField(max_length=30, validators=[
+        validate_at_least_one_lower_case,
+        validate_at_least_one_upper_case,
+        validate_at_least_one_digit,
+        validate_at_least_one_special_character,
+        validate_password_length
+        ])
     email = EmailField()
     first_name = CharField(max_length=20, null=True)
     last_name = CharField(max_length=30, null=True)
@@ -86,5 +81,8 @@ class Word(Model):
     score = PositiveIntegerField(default=0)
     is_learned = BooleanField(default=False)
     is_seen = BooleanField(default=False)
-    created_at = DateTimeField(default=datetime.fromtimestamp(0))
-    created_at_local = DateTimeField(default=datetime.fromtimestamp(0))
+    created_at = DateTimeField(default=datetime.fromtimestamp(0, py_timezone('UTC')))
+    created_at_local = DateTimeField(default=datetime.fromtimestamp(0, py_timezone('UTC')))
+
+    def __str__(self):
+        return self.original_word
