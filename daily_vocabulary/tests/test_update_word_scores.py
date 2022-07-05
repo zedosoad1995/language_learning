@@ -3,12 +3,6 @@ from django.test import Client, TestCase
 from pytz import timezone as py_timezone
 from unittest.mock import patch
 
-from django import setup
-import os
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "language_learning.settings")
-setup()
-
 from ..models import User, Word
 from ..utils.utils import calculate_new_score
 

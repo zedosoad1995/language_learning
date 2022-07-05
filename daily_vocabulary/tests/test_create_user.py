@@ -1,11 +1,6 @@
 from parameterized import parameterized
 from django.test import Client, TestCase
 
-from django import setup
-import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "language_learning.settings")
-setup()
-
 from ..models import User
 
 URL = '/users/'
@@ -37,7 +32,6 @@ class TestCeateUser(TestCase):
        ('username!'),
    ])
     def test_returns_400_when_invalid_username_is_given(self, username):
-        #payload = {k: v for k, v in STANDARD_PAYLOAD.items() if k != 'password'}
         payload = STANDARD_PAYLOAD.copy()
         payload['username'] = username
         response = self.client.post(URL, payload, content_type='application/json')

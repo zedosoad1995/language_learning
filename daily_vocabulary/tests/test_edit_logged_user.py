@@ -1,10 +1,5 @@
 from django.test import Client, TestCase
 
-from django import setup
-import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "language_learning.settings")
-setup()
-
 from ..models import User
 
 URL = '/users/me/'

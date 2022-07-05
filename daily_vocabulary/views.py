@@ -1,6 +1,6 @@
 from language_learning.settings import TIME_ZONE
 
-from .utils.utils import calculate_new_score, get_days_since
+from .utils.utils import calculate_new_score, get_datetime_as_timezone, get_days_since
 from .models import User, Word
 from .serializers import UserSerializer, WordSerializer
 from django.http import HttpResponse, JsonResponse
@@ -63,6 +63,23 @@ def user_list(request):
 
         return JsonResponse(serializer.errors, status=400)
         
+
+
+def update_words(now, days_since_last_update):
+    words = Word.objects.filter(is_learned=False)
+    for word in words:
+        days_since_curr_word = get_days_since(now, word.created_at_local)
+        days_since_last_update = min(days_since_last_update, days_since_curr_word)
+
+        if days_since_last_update > 0:
+            if word.is_seen:
+                word.score = 0
+                word.is_seen = False
+            else:
+                word.score += calculate_new_score(days_since_last_update, word.relevance, word.knowledge)
+
+        word.save()
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, ])
 def update_word_scores(request):
@@ -73,35 +90,23 @@ def update_word_scores(request):
 
     logged_user = User.objects.filter(id=request.auth.get('user_id')).first()
 
-    prev_update = logged_user.last_update.astimezone(tz=py_timezone(logged_user.timezone))
-
-    tz_name = data.get('timezone', logged_user.timezone)
-    now = timezone.now()
     try:
-        now_to_tz = now.astimezone(tz=py_timezone(tz_name))
+        prev_update = get_datetime_as_timezone(logged_user.last_update, logged_user.timezone)
+
+        tz_name = data.get('timezone', logged_user.timezone)
+        now_utc = timezone.now()
+        now = get_datetime_as_timezone(now_utc, tz_name)
     except UnknownTimeZoneError:
         return JsonResponse('Invalid timezone', status=400, safe=False)
 
-    days_since_max = get_days_since(now_to_tz, prev_update)
-    if days_since_max <= 0:
+    days_since_last_update = get_days_since(now, prev_update)
+    if days_since_last_update <= 0:
         return HttpResponse(status=200)
 
-    words = Word.objects.filter(is_learned=False)
-    for word in words:
-        days_since_curr_word = get_days_since(now_to_tz, word.created_at_local)
-        days_since = min(days_since_max, days_since_curr_word)
-
-        if days_since > 0:
-            if word.is_seen:
-                word.score = 0
-                word.is_seen = False
-            else:
-                word.score += calculate_new_score(days_since, word.relevance, word.knowledge)
-
-        word.save()
+    update_words(now, days_since_last_update)
 
     logged_user.timezone = tz_name
-    logged_user.last_update = now
+    logged_user.last_update = now_utc
     logged_user.save()
 
     return HttpResponse(status=200)
@@ -114,10 +119,9 @@ def daily_words_list(request):
     List the top n words of the day, ordered by score (where n is the number of daily words)
     """
     user_id = request.auth.get('user_id')
-
     logged_user = User.objects.filter(id=user_id).first()
-    tz = py_timezone(logged_user.timezone)
-    current_date = datetime.now(tz)
+
+    current_date = get_datetime_as_timezone(timezone.now(), logged_user.timezone)
 
     # To exclude words added in that day (or after) to being returned
     current_day_filter = {
