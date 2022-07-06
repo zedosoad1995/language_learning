@@ -2,7 +2,7 @@ from language_learning.settings import TIME_ZONE
 
 from .utils.utils import calculate_new_score, get_datetime_as_timezone, get_days_since
 from .models import User, Word
-from .serializers import UserSerializer, WordSerializer
+from .serializers import UserSerializer, WordSerializer, WordPatchSerializer, WordPostSerializer
 from django.http import HttpResponse, JsonResponse
 from rest_framework.parsers import JSONParser
 from rest_framework.decorators import api_view
@@ -154,14 +154,13 @@ def words_list(request):
 
     elif request.method == 'POST':
         data = JSONParser().parse(request)
-        data['user_id'] = request.auth.get('user_id')
+        data['user'] = request.auth.get('user_id')
         data['created_at'] = timezone.now()
 
-        serializer = WordSerializer(data=data)
+        serializer = WordPostSerializer(data=data)
         if serializer.is_valid():
-            w = Word(**data)
-            w.save()
-            return JsonResponse(data, status=201)
+            serializer.save()
+            return JsonResponse(serializer.data, status=201)
         return JsonResponse(serializer.errors, status=400)
 
 
@@ -182,7 +181,7 @@ def word_detail(request, pk):
 
     elif request.method == 'PATCH':
         data = JSONParser().parse(request)
-        serializer = WordSerializer(word, data=data, partial=True)
+        serializer = WordPatchSerializer(word, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return JsonResponse(serializer.data)
