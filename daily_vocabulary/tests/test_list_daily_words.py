@@ -9,7 +9,7 @@ from ..utils.utils import calculate_new_score
 URL = '/words/daily/'
 
 
-NOW = datetime(2010, 1, 1, 12)
+NOW = datetime(2010, 1, 1, 12, tzinfo=py_timezone('UTC'))
 
 class TestCeateUser(TestCase):
     def setUp(self):
