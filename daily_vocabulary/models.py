@@ -34,7 +34,7 @@ class User(AbstractUser):
         unique=True, 
         validators=[validate_username]
         )
-    password = CharField(max_length=30, validators=[
+    password = CharField(max_length=300, validators=[
         validate_at_least_one_lower_case,
         validate_at_least_one_upper_case,
         validate_at_least_one_digit,

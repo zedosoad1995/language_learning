@@ -1,5 +1,7 @@
 settings*
 *_pycache_*
 venv
+.env
 *.vscode*
 *db.sqlite3*
+TODO.txt

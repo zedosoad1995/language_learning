@@ -22,7 +22,7 @@ def validate_at_least_one_special_character(val):
             )
 
 def validate_password_length(val):
-    if re.fullmatch(r"[\da-zA-Z*!@$%^&(){}\[\]:;<>,\.\?\/~_\+\-=|]{8,}", val) is None:
+    if re.fullmatch(r"[\da-zA-Z*!@$%^&(){}\[\]:;<>,\.\?\/~_\+\-=|]{8,30}", val) is None:
         raise ValidationError('Password\'s length must be between 8 and 30 characters')
 
 
